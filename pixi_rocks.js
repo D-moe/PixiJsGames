@@ -1,10 +1,10 @@
 document.addEventListener('DOMContentLoaded', () => {
-
     // Create a Pixi Application
     const app = new PIXI.Application({
         width: window.innerWidth,
         height: window.innerHeight,
-        backgroundColor: 0x1099bb
+        backgroundColor: 0x1099bb,
+        resizeTo: window
     });
     document.body.appendChild(app.view);
 
@@ -34,8 +34,57 @@ document.addEventListener('DOMContentLoaded', () => {
     window.addEventListener('keydown', (e) => keys[e.code] = true);
     window.addEventListener('keyup', (e) => keys[e.code] = false);
 
+    // Resize function
+    function resize() {
+        player.x = app.screen.width / 2;
+        player.y = app.screen.height - 50;
+    }
+
+    // Listen for window resize events
+    window.addEventListener('resize', resize);
+
+    // Collision detection function
+    function checkCollision(a, b) {
+        const boundA = a.getBounds();
+        const boundB = b.getBounds();
+        return boundA.x + boundA.width > boundB.x &&
+               boundA.x < boundB.x + boundB.width &&
+               boundA.y + boundA.height > boundB.y &&
+               boundA.y < boundB.y + boundB.height;
+    }
+
+    // Game over function
+    function gameOver() {
+        // Stop the game loop
+        app.ticker.stop();
+
+        // Create game over text
+        const style = new PIXI.TextStyle({
+            fontFamily: 'Arial',
+            fontSize: 36,
+            fill: ['#ffffff', '#ff0000'],
+            stroke: '#4a1850',
+            strokeThickness: 5,
+            dropShadow: true,
+            dropShadowColor: '#000000',
+            dropShadowBlur: 4,
+            dropShadowAngle: Math.PI / 6,
+            dropShadowDistance: 6,
+        });
+
+        const gameOverText = new PIXI.Text('Game Over!', style);
+        gameOverText.x = app.screen.width / 2;
+        gameOverText.y = app.screen.height / 2;
+        gameOverText.anchor.set(0.5);
+        app.stage.addChild(gameOverText);
+    }
+
+    let isGameOver = false;
+
     // Game loop
     app.ticker.add((delta) => {
+        if (isGameOver) return;
+
         // Move player
         if (keys['KeyA'] && player.x > 0) player.x -= 5 * delta;
         if (keys['KeyD'] && player.x < app.screen.width) player.x += 5 * delta;
@@ -45,13 +94,21 @@ document.addEventListener('DOMContentLoaded', () => {
         // Spawn rocks
         if (Math.random() < 0.02) spawnRock();
 
-        // Move rocks
+        // Move rocks and check for collision
         for (let i = rocks.length - 1; i >= 0; i--) {
             rocks[i].y += 3 * delta;
+
+            // Check for collision with player
+            if (checkCollision(player, rocks[i])) {
+                isGameOver = true;
+                gameOver();
+                return;
+            }
+
             if (rocks[i].y > app.screen.height + 50) {
                 app.stage.removeChild(rocks[i]);
                 rocks.splice(i, 1);
             }
         }
     });
-})
+});
