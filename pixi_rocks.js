@@ -9,21 +9,30 @@ document.addEventListener('DOMContentLoaded', () => {
     document.body.appendChild(app.view);
 
     // Create player sprite
-    const player = PIXI.Sprite.from('https://pixijs.io/examples/examples/assets/bunny.png');
+    const player = PIXI.Sprite.from('assets/android_front_no_bg.png');
     player.anchor.set(0.5);
     player.x = app.screen.width / 2;
     player.y = app.screen.height - 50;
+    player.width = 50;
+    player.height = 50;
     app.stage.addChild(player);
 
     // Create an array to store rocks
     const rocks = [];
+    const max_rock_width = 200;
+    const max_rock_height = 200;
+    const min_rock_width = 100;
+    const min_rock_height = 100;
+
 
     // Create a function to spawn rocks
     function spawnRock() {
-        const rock = PIXI.Sprite.from('https://pixijs.io/examples/examples/assets/bunny.png');
+        const rock = PIXI.Sprite.from('assets/rock_no_bg.png');
         rock.anchor.set(0.5);
         rock.x = Math.random() * app.screen.width;
         rock.y = -50;
+        rock.height = Math.max(Math.random() * max_rock_height, min_rock_height);
+        rock.width = Math.max(Math.random() * max_rock_width, min_rock_width);
         rock.tint = 0x808080; // Gray color
         app.stage.addChild(rock);
         rocks.push(rock);
@@ -55,8 +64,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Game over function
     function gameOver() {
-        // Stop the game loop
-        app.ticker.stop();
+        // Stop the main game loop
+        app.ticker.remove(gameLoop);
 
         // Create game over text
         const style = new PIXI.TextStyle({
@@ -76,23 +85,58 @@ document.addEventListener('DOMContentLoaded', () => {
         gameOverText.x = app.screen.width / 2;
         gameOverText.y = app.screen.height / 2;
         gameOverText.anchor.set(0.5);
+        gameOverText.alpha = 0;
         app.stage.addChild(gameOverText);
+
+        // Spin and fade out animation
+        let spinSpeed = 0.1;
+        let fadeSpeed = 0.02;
+        app.ticker.add(() => {
+            player.rotation += spinSpeed;
+            player.alpha -= fadeSpeed;
+            gameOverText.alpha += fadeSpeed;
+
+            if (player.alpha <= 0) {
+                player.alpha = 0;
+                spinSpeed = 0;
+            }
+
+            if (gameOverText.alpha >= 1) {
+                gameOverText.alpha = 1;
+                fadeSpeed = 0;
+            }
+        });
     }
 
-    let isGameOver = false;
-
     // Game loop
-    app.ticker.add((delta) => {
-        if (isGameOver) return;
-
+    function gameLoop(delta) {
         // Move player
-        if (keys['KeyA'] && player.x > 0) player.x -= 5 * delta;
-        if (keys['KeyD'] && player.x < app.screen.width) player.x += 5 * delta;
-        if (keys['KeyW'] && player.y > 0) player.y -= 5 * delta;
-        if (keys['KeyS'] && player.y < app.screen.height) player.y += 5 * delta;
+        if (keys['KeyA'] && player.x > 0){
+            player.texture = PIXI.Texture.from('assets/android_left_no_bg.png');
+            player.width = 35;
+            player.x -= 5 * delta;
+        }
+        if (keys['KeyD'] && player.x < app.screen.width){
+            player.texture = PIXI.Texture.from('assets/android_right_no_bg.png');
+            player.width = 35;
+            player.x += 5 * delta;
+        }
+        if (keys['KeyW'] && player.y > 0){
+            player.texture = PIXI.Texture.from('assets/android_back_no_bg.png');
+            player.width = 50
+            player.y -= 5 * delta;
+        }
+        if (keys['KeyS'] && player.y < app.screen.height){
+            player.texture = PIXI.Texture.from('assets/android_front_no_bg.png');
+            player.width = 50
+            player.y += 5 * delta;
+        }
 
+        let num_rocks = 4;
+        for(let i = 0; i<num_rocks; i++){
         // Spawn rocks
-        if (Math.random() < 0.02) spawnRock();
+            if (Math.random() < 0.02) spawnRock();
+        }
 
         // Move rocks and check for collision
         for (let i = rocks.length - 1; i >= 0; i--) {
@@ -100,7 +144,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Check for collision with player
             if (checkCollision(player, rocks[i])) {
-                isGameOver = true;
                 gameOver();
                 return;
             }
@@ -110,5 +153,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 rocks.splice(i, 1);
             }
         }
-    });
+    }
+
+    // Start the game loop
+    app.ticker.add(gameLoop);
 });
